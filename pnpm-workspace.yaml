@@ -1,0 +1,6 @@
+packages:
+  - packages/*
+  - infrastructure
+  - simulations
+onlyBuiltDependencies:
+  - esbuild
