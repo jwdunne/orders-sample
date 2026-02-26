@@ -2,6 +2,7 @@
     "extends": "../tsconfig.json",
     "compilerOptions": {
         "experimentalDecorators": true,
+        "outDir": "./dist"
     },
     "include": ["lib/**/*.ts", "bin/**/*.ts"],
     "exclude": ["node_modules", "dist"]

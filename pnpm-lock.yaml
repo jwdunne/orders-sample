@@ -70,6 +70,9 @@ importers:
       '@orders-sample/shared':
         specifier: workspace:*
         version: link:../shared
+      uuid:
+        specifier: ^13.0.0
+        version: 13.0.0
     devDependencies:
       '@types/aws-lambda':
         specifier: ^8.10.160
@@ -95,7 +98,14 @@ importers:
         version: 5.9.3
 
   simulations:
+    dependencies:
+      '@orders-sample/order-service':
+        specifier: workspace:*
+        version: link:../packages/order-service
     devDependencies:
+      '@types/node':
+        specifier: ^25.3.0
+        version: 25.3.0
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -755,6 +765,10 @@ packages:
 
   undici-types@7.18.2:
     resolution: {integrity: sha512-AsuCzffGHJybSaRrmr5eHr81mwJU3kjw6M+uprWvCXiNeN9SOGwQ3Jn8jb8m3Z6izVgknn1R0FTCEAP2QrLY/w==}
+
+  uuid@13.0.0:
+    resolution: {integrity: sha512-XQegIaBTVUjSHliKqcnFqYypAd4S+WCYt5NIeRs6w/UAry7z8Y9j5ZwRRL4kzq9U3sD6v+85er9FvkEaBpji2w==}
+    hasBin: true
 
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
@@ -1694,6 +1708,8 @@ snapshots:
   typescript@5.9.3: {}
 
   undici-types@7.18.2: {}
+
+  uuid@13.0.0: {}
 
   v8-compile-cache-lib@3.0.1: {}
 
