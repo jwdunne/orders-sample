@@ -1,16 +1,6 @@
 services:
-  localstack:
-    image: localstack/localstack:latest
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
     ports:
-      - "4566:4566"
-    environment:
-      - SERVICES=dynamodb,lambda,apigateway,sqs,sns,events,cloudwatch,logs,iam,sts,ssm,cloudformation
-      - DEBUG=0
-      - LAMBDA_EXECUTOR=docker
-      - DOCKER_HOST=unix:///var/run/docker.sock
-    volumes:
-      - localstack-data:/var/lib/localstack
-      - /var/run/docker.sock:/var/run/docker.sock
-
-volumes:
-  localstack-data:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -inMemory -sharedDb"
