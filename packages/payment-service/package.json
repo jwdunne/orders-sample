@@ -6,10 +6,12 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@orders-sample/shared": "workspace:*"
+    "@orders-sample/shared": "workspace:*",
+    "aws-lambda": "^1.0.7"
   },
   "packageManager": "pnpm@10.11.1",
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.160",
     "typescript": "^5.9.3"
   }
 }

@@ -22,17 +22,18 @@ export class OrdersStack extends cdk.Stack {
             }
         });
 
-        const fn = new lambda.NodejsFunction(this, 'OrdersApiFunction', {
-            entry: path.join(__dirname, '../../packages/order-service/src/handlers/api.ts'),
+        const ordersFn = new lambda.NodejsFunction(this, 'OrdersApiFunction', {
+            entry: path.join(__dirname, '../../packages/order-service/src/handler.ts'),
             handler: 'handler',
             runtime: Runtime.NODEJS_20_X
         });
 
         const api = new apigateway.LambdaRestApi(this, 'OrdersApi', {
-            handler: fn,
+            handler: ordersFn,
             proxy: false
         });
 
+        // Orders endpoints
         const ordersResource = api.root.addResource('orders');
         ordersResource.addMethod('post');
 
@@ -43,5 +44,20 @@ export class OrdersStack extends cdk.Stack {
 
         const customerOrderResource = customerOrdersResource.addResource('{order_id}');
         customerOrderResource.addMethod('get');
+
+        // Payments endpoints
+        const paymentsFn = new lambda.NodejsFunction(this, 'PaymentsApiFunction', {
+            entry: path.join(__dirname, '../../packages/payment-service/src/handler.ts'),
+            handler: 'handler',
+            runtime: Runtime.NODEJS_20_X
+        });
+
+        const paymentsResource = api.root.addResource('payments', {
+            defaultIntegration: new apigateway.LambdaIntegration(paymentsFn)
+        });
+
+        paymentsResource
+            .addResource('{order_id}')
+            .addMethod('get');
     }
 }

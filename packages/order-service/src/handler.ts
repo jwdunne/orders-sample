@@ -67,6 +67,7 @@ export const orders = {
             Item: {
                 PK: `CUST#${order.customerId}`,
                 SK: `ORDR#${order.orderId}`,
+                TYPE: 'Order',
                 ...order
             }
         }))
@@ -80,6 +81,7 @@ export const orders = {
                         Item: {
                             PK: `CUST#${order.customerId}`,
                             SK: `ORDR#${order.orderId}`,
+                            TYPE: 'Order',
                             ...order
                         }
                     }
