@@ -2,7 +2,7 @@
   "name": "@orders-sample/payment-service",
   "version": "0.1.0",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --noEmit",
     "bundle": "esbuild src/handler.ts --bundle --platform=node --target=node20 --outdir=dist/lambda --external:@aws-sdk/*",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

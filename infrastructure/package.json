@@ -2,7 +2,8 @@
   "name": "@orders-sample/infrastructure",
   "version": "0.1.0",
   "scripts": {
-    "build": "tsc"
+      "preview": "pulumi preview",
+      "deploy": "pulumi up --yes"
   },
   "packageManager": "pnpm@10.11.1",
   "dependencies": {
