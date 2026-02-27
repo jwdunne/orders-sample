@@ -1,5 +1,6 @@
-import { Order, orders } from '@orders-sample/order-service/src/handlers/api';
+import { Order, orders } from '@orders-sample/order-service/src/handler';
 import { v7 as uuidv7 } from 'uuid';
+
 
 async function main() {
     let customerIds = [

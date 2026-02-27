@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "",
   "scripts": {
-    "flush": "AWS_REGION=us-east-1 AWS_ENDPOINT_URL=http://localhost.localstack.cloud:4566 tsx src/flush.ts",
-    "partition-naive": "AWS_REGION=us-east-1 AWS_ENDPOINT_URL=http://localhost.localstack.cloud:4566 tsx src/partition-naive.ts",
+    "flush": "tsx src/flush.ts",
+    "partition-naive": "tsx src/partition-naive.ts",
     "tsc": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

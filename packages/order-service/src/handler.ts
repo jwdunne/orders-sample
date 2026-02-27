@@ -3,6 +3,13 @@ import { v7 as uuidv7 } from 'uuid';
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
+if (!process.env.TABLE_NAME) {
+    console.error('Cannot run simulation without providing TABLE_NAME environment variable');
+    process.exit(1);
+}
+
+const tableName = process.env.TABLE_NAME;
+
 export type OrderItem = {
     product: string,
     quantity: number,
@@ -32,7 +39,7 @@ const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 export const orders = {
     get: async (customerId: string, orderId: string): Promise<StoreEnvelope<Order>> => {
         const result = await client.send(new GetCommand({
-            TableName: 'Orders',
+            TableName: tableName,
             Key: {
                 PK: `CUST#${customerId}`,
                 SK: `ORDR#${orderId}`
@@ -63,7 +70,7 @@ export const orders = {
 
     create: async (order: Order): Promise<void> => {
         await client.send(new PutCommand({
-            TableName: 'Orders',
+            TableName: tableName,
             Item: {
                 PK: `CUST#${order.customerId}`,
                 SK: `ORDR#${order.orderId}`,
@@ -76,7 +83,7 @@ export const orders = {
     batchCreate: async (orders: Order[]): Promise<void> => {
         await client.send(new BatchWriteCommand({
             RequestItems: {
-                Orders: orders.map(order => ({
+                [tableName]: orders.map(order => ({
                     PutRequest: {
                         Item: {
                             PK: `CUST#${order.customerId}`,
@@ -92,7 +99,7 @@ export const orders = {
 
     listByCustomer: async (customerId: string): Promise<StoreEnvelope<Order[]>> => {
         const result = await client.send(new QueryCommand({
-            TableName: 'Orders',
+            TableName: tableName,
             KeyConditionExpression: 'PK = :PK AND begins_with(SK, :SK)',
             ExpressionAttributeValues: {
                 ':PK': `CUST#${customerId}`,

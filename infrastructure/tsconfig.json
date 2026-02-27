@@ -1,9 +1,8 @@
 {
     "extends": "../tsconfig.json",
     "compilerOptions": {
-        "experimentalDecorators": true,
-        "outDir": "./dist"
+        "module": "commonjs",
+        "moduleResolution": "node",
     },
-    "include": ["lib/**/*.ts", "bin/**/*.ts"],
-    "exclude": ["node_modules", "dist"]
+    "include": ["index.ts"]
 }

@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "tsc",
+    "bundle": "esbuild src/handler.ts --bundle --platform=node --target=node20 --outdir=dist/lambda --external:@aws-sdk/*",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -14,6 +15,8 @@
   "packageManager": "pnpm@10.11.1",
   "devDependencies": {
     "@types/aws-lambda": "^8.10.160",
+    "@types/node": "^25.3.0",
+    "esbuild": "^0.27.3",
     "typescript": "^5.9.3"
   }
 }

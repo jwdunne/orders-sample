@@ -1,0 +1,6 @@
+name: orders-sample
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+description: Distributed systems study
