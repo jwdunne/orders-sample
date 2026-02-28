@@ -33,6 +33,9 @@ importers:
       '@orders-sample/shared':
         specifier: workspace:*
         version: link:../shared
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       typescript:
         specifier: ^5.9.3
@@ -43,6 +46,9 @@ importers:
       '@orders-sample/shared':
         specifier: workspace:*
         version: link:../shared
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       typescript:
         specifier: ^5.9.3
@@ -59,6 +65,9 @@ importers:
       '@orders-sample/shared':
         specifier: workspace:*
         version: link:../shared
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
       uuid:
         specifier: ^13.0.0
         version: 13.0.0
@@ -90,6 +99,9 @@ importers:
       aws-lambda:
         specifier: ^1.0.7
         version: 1.0.7
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
     devDependencies:
       '@types/aws-lambda':
         specifier: ^8.10.160
@@ -112,6 +124,9 @@ importers:
       '@aws-sdk/lib-dynamodb':
         specifier: ^3.995.0
         version: 3.995.0(@aws-sdk/client-dynamodb@3.995.0)
+      neverthrow:
+        specifier: ^8.2.0
+        version: 8.2.0
       zod:
         specifier: ^4.3.6
         version: 4.3.6
@@ -1691,6 +1706,10 @@ packages:
   negotiator@1.0.0:
     resolution: {integrity: sha512-8Ofs/AUQh8MaEcrlq5xOX0CQ9ypTF5dl78mjlMNfOK08fzpgTHQRQPBxcPlEtIw0yRpws+Zo/3r+5WRby7u3Gg==}
     engines: {node: '>= 0.6'}
+
+  neverthrow@8.2.0:
+    resolution: {integrity: sha512-kOCT/1MCPAxY5iUV3wytNFUMUolzuwd/VF/1KCx7kf6CutrOsTie+84zTGTpgQycjvfLdBBdvBvFLqFD2c0wkQ==}
+    engines: {node: '>=18'}
 
   node-gyp@12.2.0:
     resolution: {integrity: sha512-q23WdzrQv48KozXlr0U1v9dwO/k59NHeSzn6loGcasyf0UnSrtzs8kRxM+mfwJSf0DkX0s43hcqgnSO4/VNthQ==}
@@ -4170,6 +4189,10 @@ snapshots:
   nanoid@3.3.11: {}
 
   negotiator@1.0.0: {}
+
+  neverthrow@8.2.0:
+    optionalDependencies:
+      '@rollup/rollup-linux-x64-gnu': 4.59.0
 
   node-gyp@12.2.0:
     dependencies:

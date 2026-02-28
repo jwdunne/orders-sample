@@ -3,14 +3,13 @@ import { assert, describe, expect, test } from "vitest";
 import { handleCreateOrder } from "./handler";
 import { createOrderRepository } from "./repository";
 import { v7 as uuidv7 } from "uuid";
-import { APIGatewayProxyEvent } from "aws-lambda";
 
 const { client, tableName } = useDynamoDBTable();
+const repo = createOrderRepository(client, tableName);
 
 describe('POST /orders', () => {
     test('creates order and returns 201', async () => {
         const customerId = uuidv7();
-        const repo = createOrderRepository(client, tableName);
         const response = await handleCreateOrder(repo, mockAPIGatewayEvent({
             customerId,
             status: 'PENDING',
@@ -23,7 +22,8 @@ describe('POST /orders', () => {
         }));
 
         expect(response.statusCode).toBe(201);
-        const body = JSON.parse(response.body) as Order;
+
+        const body = Order.parse(JSON.parse(response.body ?? ''));
         expect(body.customerId).toBe(customerId);
         expect(body.status).toBe('PENDING');
         expect(body.total).toBe(39.98);
@@ -37,15 +37,12 @@ describe('POST /orders', () => {
     });
 
     test('responds with 400 when body missing', async () => {
-        const repo = createOrderRepository(client, tableName);
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent(null));
-
+        const response = await handleCreateOrder(repo, mockAPIGatewayEvent());
         expect(response.statusCode).toBe(400);
     });
 
     test('responds with 400 when body is malformed JSON', async () => {
-        const repo = createOrderRepository(client, tableName);
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent(null, {
+        const response = await handleCreateOrder(repo, mockAPIGatewayEvent(undefined, {
             body: 'malformed json string'
         }));
         expect(response.statusCode).toBe(400);
@@ -82,7 +79,7 @@ describe('POST /orders', () => {
             }
         }))
 
-        expect(response.statusCode).toBe(406);
+        expect(response.statusCode).toBe(415);
     });
 });
 

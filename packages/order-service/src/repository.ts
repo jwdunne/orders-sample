@@ -1,8 +1,10 @@
 import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { Order, OrderItem, StoreEnvelope } from "@orders-sample/shared";
+import { Order, StoreEnvelope } from "@orders-sample/shared";
+import { DBError, createDynamoErrorHandler } from "@orders-sample/shared/src/errors";
+import { ResultAsync } from 'neverthrow';
 
 export type OrderRepository = {
-    create: (order: Order) => Promise<void>;
+    create: (order: Order) => ResultAsync<Order, DBError>;
 
     batchCreate: (orders: Order[]) => Promise<void>;
 
@@ -16,16 +18,20 @@ export function createOrderRepository(
     tableName: string
 ): OrderRepository {
     return {
-        create: async (order: Order): Promise<void> => {
-            await client.send(new PutCommand({
-                TableName: tableName,
-                Item: {
-                    PK: `CUST#${order.customerId}`,
-                    SK: `ORDR#${order.orderId}`,
-                    TYPE: 'Order',
-                    ...order
-                }
-            }));
+        create: (order: Order): ResultAsync<Order, DBError> => {
+            return ResultAsync.fromPromise(
+                client.send(new PutCommand({
+                    TableName: tableName,
+                    Item: {
+                        PK: `CUST#${order.customerId}`,
+                        SK: `ORDR#${order.orderId}`,
+                        TYPE: 'Order',
+                        ...order
+                    },
+                    ConditionExpression: 'attribute_not_exists(PK)'
+                })),
+                createDynamoErrorHandler('order', `${order.customerId}:${order.orderId}`)
+            ).map(() => order);
         },
 
         batchCreate: async (orders: Order[]): Promise<void> => {

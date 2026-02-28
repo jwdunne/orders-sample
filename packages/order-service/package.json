@@ -10,6 +10,7 @@
     "@aws-sdk/client-dynamodb": "^3.995.0",
     "@aws-sdk/lib-dynamodb": "^3.995.0",
     "@orders-sample/shared": "workspace:*",
+    "neverthrow": "^8.2.0",
     "uuid": "^13.0.0",
     "zod": "^4.3.6"
   },

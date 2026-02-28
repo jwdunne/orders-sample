@@ -30,7 +30,7 @@ async function main() {
         let batch = [];
 
         for (let i = 0; i < 2000; i++) {
-            const order = {
+            const order = Order.parse({
                 orderId: uuidv7(),
                 customerId: customerId,
                 status: 'PENDING',
@@ -38,8 +38,8 @@ async function main() {
                     { product: 'John Doe', price: 20.00, quantity: 2 }
                 ],
                 total: 20.00,
-                createdAt: String(new Date())
-            };
+                createdAt: new Date().toISOString()
+            });
 
             ordersList.push(order);
             batch.push(order);

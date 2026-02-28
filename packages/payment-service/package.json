@@ -8,7 +8,8 @@
   },
   "dependencies": {
     "@orders-sample/shared": "workspace:*",
-    "aws-lambda": "^1.0.7"
+    "aws-lambda": "^1.0.7",
+    "neverthrow": "^8.2.0"
   },
   "packageManager": "pnpm@10.11.1",
   "devDependencies": {

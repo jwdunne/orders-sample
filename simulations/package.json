@@ -5,7 +5,7 @@
   "scripts": {
     "flush": "tsx src/flush.ts",
     "partition-naive": "tsx src/partition-naive.ts",
-    "tsc": "tsc",
+    "build": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "packageManager": "pnpm@10.11.1",

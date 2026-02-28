@@ -2,7 +2,7 @@ import { beforeAll, afterAll } from 'vitest';
 import { CreateTableCommand, DeleteTableCommand, DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { randomUUID } from 'crypto';
-import { APIGatewayProxyEvent } from 'aws-lambda';
+import { APIGatewayProxyEventV2 } from 'aws-lambda';
 
 const rawClient = new DynamoDBClient({
     endpoint: 'http://localhost:8000',
@@ -44,23 +44,22 @@ export function useDynamoDBTable() {
     return { tableName, client };
 }
 
-export function mockAPIGatewayEvent<T extends Record<string, any> | null>(body: T, event?: Partial<APIGatewayProxyEvent>): APIGatewayProxyEvent {
+export function mockAPIGatewayEvent<T extends Record<string, any>>(body?: T, event?: Partial<APIGatewayProxyEventV2>): APIGatewayProxyEventV2 {
     return {
+        version: '',
+        routeKey: '',
+        rawPath: '',
+        rawQueryString: '',
+        isBase64Encoded: false,
+        pathParameters: {},
+        queryStringParameters: {},
+        stageVariables: {},
+        requestContext: {} as any,
+        body: body ? JSON.stringify(body) : body,
         ...(event ?? {}),
-        httpMethod: 'ANY',
         headers: {
             'content-type': 'application/json',
             ...event?.headers ?? {}
         },
-        multiValueHeaders: event?.multiValueHeaders ?? {},
-        isBase64Encoded: event?.isBase64Encoded ?? false,
-        path: event?.path ?? '',
-        pathParameters: event?.pathParameters ?? {},
-        queryStringParameters: event?.queryStringParameters ?? {},
-        multiValueQueryStringParameters: event?.multiValueQueryStringParameters ?? {},
-        stageVariables: event?.stageVariables ?? {},
-        requestContext: event?.requestContext ?? ({} as any),
-        resource: event?.resource ?? '',
-        body: body ? JSON.stringify(body) : body
     };
 }

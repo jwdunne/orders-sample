@@ -1,12 +1,12 @@
-import z from 'zod';
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
 import { v7 as uuidv7 } from 'uuid';
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { OrderRepository, createOrderRepository } from "./repository";
-import { CreateOrder, Order } from "@orders-sample/shared";
+import { CreateOrder, Order, getJsonBody, parseJsonObjectBody, toHttpResponse } from "@orders-sample/shared";
+import { parse } from '@orders-sample/shared/src/errors';
 
-export const handler = async (event: APIGatewayProxyEvent): Promise<unknown> => {
+export const handler = async (event: APIGatewayProxyEventV2): Promise<unknown> => {
     if (!process.env.TABLE_NAME) {
         console.error('Cannot run simulation without providing TABLE_NAME environment variable');
         process.exit(1);
@@ -14,10 +14,9 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<unknown> => 
 
     const tableName = process.env.TABLE_NAME;
     const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-
     const orders = createOrderRepository(client, tableName);
 
-    switch (`${event.httpMethod} ${event.resource}`) {
+    switch (event.routeKey) {
         case 'GET /customers/{customer_id}/orders/{order_id}':
             return handleGetOrder(orders, event);
 
@@ -37,90 +36,21 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<unknown> => 
     }
 }
 
-export async function handleCreateOrder(repository: OrderRepository, event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-    if (event.headers['content-type'] && event.headers['content-type'] !== 'application/json') {
-        return {
-            statusCode: 406,
-            body: JSON.stringify({
-                type: 'error',
-                message: 'Not acceptable. Only application/json is supported.'
-            })
-        }
-    }
-
-    if (event.body === null) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({
-                type: 'error',
-                status: 'Bad request',
-                message: 'Body is missing. Expected order data encoded as JSON'
-            })
-        }
-    }
-
-    let rawOrderRecord;
-    try {
-        rawOrderRecord = JSON.parse(event.body);
-    } catch (e: unknown) {
-        return {
-            statusCode: 400,
-            body: JSON.stringify({
-                type: 'error',
-                message: 'Malformed request. Failed to parse JSON.',
-                reason: e instanceof Error ? e.message : e
-            })
-        }
-    }
-
-    let parsedOrderRequest;
-    try {
-        parsedOrderRequest = CreateOrder.parse(rawOrderRecord);
-    } catch (e) {
-        return {
-            statusCode: 422,
-            body: JSON.stringify({
-                type: 'error',
-                message: 'Unprocessable entity. Some fields missing or malformed.',
-                reason: e instanceof z.ZodError
-                    ? e.issues
-                    : e instanceof Error
-                        ? e.message
-                        : e
-            })
-        }
-    }
-
-    let order;
-    try {
-        order = Order.parse({
+export async function handleCreateOrder(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> {
+    const result = await getJsonBody(event)
+        .andThen(parseJsonObjectBody)
+        .andThen((json) => parse(CreateOrder, json))
+        .andThen((dto) => parse(Order, {
             orderId: uuidv7(),
-            ...parsedOrderRequest,
+            ...dto,
             createdAt: new Date().toISOString()
-        });
-    } catch (e) {
-        return {
-            statusCode: 422,
-            body: JSON.stringify({
-                type: 'error',
-                message: 'Unprocessable entity. Some fields missing or malformed.',
-                reason: e instanceof z.ZodError
-                    ? e.issues
-                    : e instanceof Error
-                        ? e.message
-                        : e
-            })
-        }
-    }
+        }))
+        .asyncAndThen((order) => repository.create(order));
 
-    await repository.create(order);
-    return {
-        statusCode: 201,
-        body: JSON.stringify(order)
-    };
+    return toHttpResponse(result, 201);
 }
 
-export async function handleGetOrder(repository: OrderRepository, event: APIGatewayProxyEvent): Promise<unknown> {
+export async function handleGetOrder(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<unknown> {
     const result = await repository.get(
         event.pathParameters?.customer_id ?? '',
         event.pathParameters?.order_id ?? ''
@@ -132,7 +62,7 @@ export async function handleGetOrder(repository: OrderRepository, event: APIGate
     };
 }
 
-export async function handleCustomerOrders(repository: OrderRepository, event: APIGatewayProxyEvent): Promise<unknown> {
+export async function handleCustomerOrders(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<unknown> {
     try {
         const result = await repository.listByCustomer(event.pathParameters?.customer_id ?? '');
         return {
