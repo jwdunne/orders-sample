@@ -2,7 +2,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
 import { createOrderRepository } from '@orders-sample/order-service/src/repository';
 import { v7 as uuidv7 } from 'uuid';
-import { Order } from '@orders-sample/shared';
+import { Order } from '@orders-sample/order-service/src/model';
 
 if (!process.env.TABLE_NAME) {
     console.error('Cannot run simulation without providing TABLE_NAME environment variable');

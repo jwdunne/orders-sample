@@ -1,7 +1,8 @@
-import { Order, mockAPIGatewayEvent, useDynamoDBTable } from "@orders-sample/shared";
+import { mockAPIGatewayEvent, useDynamoDBTable } from "@orders-sample/shared";
 import { assert, describe, expect, test } from "vitest";
 import { handleCreateOrder, handleGetOrder } from "./controllers";
 import { createOrderRepository } from "./repository";
+import { Order } from "./model";
 import { v7 as uuidv7 } from "uuid";
 
 const { client, tableName } = useDynamoDBTable();

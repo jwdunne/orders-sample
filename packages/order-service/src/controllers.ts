@@ -1,4 +1,5 @@
-import { CreateOrder, Order, getJsonBody, parseJsonObjectBody, parseRequest, parseResource, toHttpResponse } from "@orders-sample/shared";
+import { getJsonBody, parseJsonObjectBody, parseRequest, parseResource, toHttpResponse } from "@orders-sample/shared";
+import { CreateOrder, Order } from './model';
 import { v7 as uuidv7 } from 'uuid';
 import { GetOrderParams, OrderRepository } from "./repository";
 import { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";

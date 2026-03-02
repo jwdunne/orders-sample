@@ -1,5 +1,11 @@
 import z from "zod";
 
+export const OrderId = z.uuidv7().brand<'OrderId'>();
+export type OrderId = z.infer<typeof OrderId>;
+
+export const CustomerId = z.uuidv7().brand<'CustomerId'>();
+export type CustomerId = z.infer<typeof CustomerId>;
+
 export const OrderItem = z.object({
     product: z.string().nonempty(),
     quantity: z.number().positive().int(),
@@ -9,8 +15,8 @@ export const OrderItem = z.object({
 export type OrderItem = z.infer<typeof OrderItem>;
 
 export const Order = z.object({
-    orderId: z.uuidv7(),
-    customerId: z.uuidv7(),
+    orderId: OrderId,
+    customerId: CustomerId,
     status: z.enum(['PENDING', 'CANCELLED', 'ACCEPTED', 'DISPATCHED']),
     items: z.array(OrderItem).nonempty(),
     total: z.number().positive(),
@@ -25,12 +31,3 @@ export const CreateOrder = Order.omit({
 });
 
 export type CreateOrder = z.infer<typeof CreateOrder>;
-
-export type StoreEnvelope<T> = {
-    data: T,
-    consumedCapacity: {
-        total: number,
-        rcu: number,
-        wcu: number
-    }
-}

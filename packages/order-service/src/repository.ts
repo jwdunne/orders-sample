@@ -1,12 +1,12 @@
 import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
-import { Order, StoreEnvelope } from "@orders-sample/shared";
+import { CustomerId, Order, OrderId } from "./model";
 import { DBError, createDynamoErrorHandler, nullishToNotFound, parseResource } from "@orders-sample/shared/src/errors";
 import { ResultAsync, err, ok } from 'neverthrow';
 import z from "zod";
 
 export const GetOrderParams = z.object({
-    orderId: z.uuidv7(),
-    customerId: z.uuidv7()
+    orderId: OrderId,
+    customerId: CustomerId
 });
 
 export type GetOrderParams = z.infer<typeof GetOrderParams>;
@@ -18,7 +18,7 @@ export type OrderRepository = {
 
     get: (params: GetOrderParams) => ResultAsync<Order, DBError>;
 
-    listByCustomer: (customerId: string) => Promise<StoreEnvelope<Order[]>>;
+    listByCustomer: (customerId: string) => Promise<Order[]>;
 };
 
 export function createOrderRepository(
@@ -78,7 +78,7 @@ export function createOrderRepository(
                 .andThen((item) => parseResource(Order, item));
         },
 
-        listByCustomer: async (customerId: string): Promise<StoreEnvelope<Order[]>> => {
+        listByCustomer: async (customerId: string): Promise<Order[]> => {
             const result = await client.send(new QueryCommand({
                 TableName: tableName,
                 KeyConditionExpression: 'PK = :PK AND begins_with(SK, :SK)',
@@ -89,18 +89,9 @@ export function createOrderRepository(
                 ReturnConsumedCapacity: 'TOTAL'
             }));
 
-            const data = result.Items?.map((orderRecord) => {
+            return result.Items?.map((orderRecord) => {
                 return Order.parse(orderRecord);
             }) ?? [];
-
-            return {
-                data,
-                consumedCapacity: {
-                    total: result.ConsumedCapacity?.CapacityUnits ?? 0,
-                    rcu: result.ConsumedCapacity?.ReadCapacityUnits ?? 0,
-                    wcu: result.ConsumedCapacity?.WriteCapacityUnits ?? 0
-                }
-            };
         }
     }
 }
