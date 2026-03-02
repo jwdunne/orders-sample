@@ -1,7 +1,7 @@
 import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { CustomerId, Order, OrderId } from "./model";
 import { DBError, createDynamoErrorHandler, nullishToNotFound, parseResource } from "@orders-sample/shared/src/errors";
-import { ResultAsync, err, ok } from 'neverthrow';
+import { ResultAsync } from 'neverthrow';
 import z from "zod";
 
 export const GetOrderParams = z.object({
@@ -11,14 +11,16 @@ export const GetOrderParams = z.object({
 
 export type GetOrderParams = z.infer<typeof GetOrderParams>;
 
+type DBResult<T> = ResultAsync<T, DBError>
+
 export type OrderRepository = {
-    create: (order: Order) => ResultAsync<Order, DBError>;
+    create: (order: Order) => DBResult<Order>;
 
     batchCreate: (orders: Order[]) => Promise<void>;
 
-    get: (params: GetOrderParams) => ResultAsync<Order, DBError>;
+    get: (params: GetOrderParams) => DBResult<Order>;
 
-    listByCustomer: (customerId: string) => Promise<Order[]>;
+    listByCustomer: (customerId: CustomerId) => DBResult<Order[]>;
 };
 
 export function createOrderRepository(
@@ -26,7 +28,7 @@ export function createOrderRepository(
     tableName: string
 ): OrderRepository {
     return {
-        create: (order: Order): ResultAsync<Order, DBError> => {
+        create: (order: Order): DBResult<Order> => {
             return ResultAsync.fromPromise(
                 client.send(new PutCommand({
                     TableName: tableName,
@@ -59,7 +61,7 @@ export function createOrderRepository(
             }));
         },
 
-        get: ({ customerId, orderId }): ResultAsync<Order, DBError> => {
+        get: ({ customerId, orderId }): DBResult<Order> => {
             const id = `${customerId}:${orderId}`;
 
             const result = ResultAsync.fromPromise(
@@ -78,20 +80,21 @@ export function createOrderRepository(
                 .andThen((item) => parseResource(Order, item));
         },
 
-        listByCustomer: async (customerId: string): Promise<Order[]> => {
-            const result = await client.send(new QueryCommand({
-                TableName: tableName,
-                KeyConditionExpression: 'PK = :PK AND begins_with(SK, :SK)',
-                ExpressionAttributeValues: {
-                    ':PK': `CUST#${customerId}`,
-                    ':SK': 'ORDR#'
-                },
-                ReturnConsumedCapacity: 'TOTAL'
-            }));
+        listByCustomer: (customerId: CustomerId): DBResult<Order[]> => {
+            const result = ResultAsync.fromPromise(
+                client.send(new QueryCommand({
+                    TableName: tableName,
+                    KeyConditionExpression: 'PK = :PK AND begins_with(SK, :SK)',
+                    ExpressionAttributeValues: {
+                        ':PK': `CUST#${customerId}`,
+                        ':SK': 'ORDR#'
+                    },
+                    ScanIndexForward: false
+                })),
+                createDynamoErrorHandler('customer', customerId)
+            );
 
-            return result.Items?.map((orderRecord) => {
-                return Order.parse(orderRecord);
-            }) ?? [];
+            return result.andThen(({ Items }) => parseResource(z.array(Order), Items));
         }
     }
 }

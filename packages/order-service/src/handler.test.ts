@@ -1,12 +1,28 @@
 import { mockAPIGatewayEvent, useDynamoDBTable } from "@orders-sample/shared";
 import { assert, describe, expect, test } from "vitest";
-import { handleCreateOrder, handleGetOrder } from "./controllers";
+import { handleCreateOrder, handleCustomerOrders, handleGetOrder } from "./controllers";
 import { createOrderRepository } from "./repository";
 import { Order } from "./model";
 import { v7 as uuidv7 } from "uuid";
+import z from "zod";
 
 const { client, tableName } = useDynamoDBTable();
 const repo = createOrderRepository(client, tableName);
+
+const setup = async (customerId: string) => {
+    const createOrderResponse = await handleCreateOrder(repo, mockAPIGatewayEvent({
+        customerId,
+        status: 'PENDING',
+        items: [{
+            product: 'Coffee',
+            quantity: 2,
+            price: 19.99
+        }],
+        total: 39.98,
+    }));
+
+    return Order.parse(JSON.parse(createOrderResponse.body ?? ''));
+};
 
 describe('POST /orders', () => {
     test('creates order and returns 201', async () => {
@@ -84,20 +100,6 @@ describe('POST /orders', () => {
 });
 
 describe('GET /customers/{customer_id}/orders/{order_id}', () => {
-    const setup = async (customerId: string) => {
-        const createOrderResponse = await handleCreateOrder(repo, mockAPIGatewayEvent({
-            customerId,
-            status: 'PENDING',
-            items: [{
-                product: 'Coffee',
-                quantity: 2,
-                price: 19.99
-            }],
-            total: 39.98,
-        }));
-
-        return Order.parse(JSON.parse(createOrderResponse.body ?? ''));
-    };
 
     test('responds with previously created order', async () => {
         const customerId = uuidv7();
@@ -165,8 +167,28 @@ describe('GET /customers/{customer_id}/orders/{order_id}', () => {
 });
 
 describe('GET /customers/{customer_id}/orders', () => {
-    test('responds with orders sorted descending', () => {
-        // ...
+    test('responds with orders sorted descending', async () => {
+        const customerId = uuidv7();
+
+        for (let i = 0; i < 10; i++) {
+            await setup(customerId);
+        }
+
+        const response = await handleCustomerOrders(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId
+            }
+        }));
+
+        const orders = z.array(Order).parse(JSON.parse(response.body ?? ''));
+
+        const sortedDescending = orders
+            .map(({ createdAt }) => createdAt)
+            .every((date, i, arr) =>
+                i === 0 || arr[i - 1] >= date
+            );
+
+        expect(sortedDescending).toBe(true);
     });
 
     test('responds with at most 10 orders per page', () => {
@@ -181,7 +203,13 @@ describe('GET /customers/{customer_id}/orders', () => {
         // ...
     });
 
-    test('responds with 400 if customer_id not valid UUID', () => {
-        // ...
+    test('responds with 400 if customer_id not valid UUID', async () => {
+        const response = await handleCustomerOrders(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId: 'barney'
+            }
+        }));
+
+        expect(response.statusCode).toBe(400);
     });
 });

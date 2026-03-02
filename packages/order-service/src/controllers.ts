@@ -1,5 +1,5 @@
 import { getJsonBody, parseJsonObjectBody, parseRequest, parseResource, toHttpResponse } from "@orders-sample/shared";
-import { CreateOrder, Order } from './model';
+import { CreateOrder, CustomerId, Order } from './model';
 import { v7 as uuidv7 } from 'uuid';
 import { GetOrderParams, OrderRepository } from "./repository";
 import { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-lambda";
@@ -26,16 +26,8 @@ export async function handleGetOrder(repository: OrderRepository, event: APIGate
 }
 
 export async function handleCustomerOrders(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> {
-    try {
-        const result = await repository.listByCustomer(event.pathParameters?.customer_id ?? '');
-        return {
-            statusCode: 200,
-            body: JSON.stringify(result.data)
-        };
-    } catch (e: unknown) {
-        return {
-            statusCode: 500,
-            body: JSON.stringify(e)
-        }
-    }
+    return toHttpResponse(
+        await parseRequest(CustomerId, event.pathParameters?.customerId)
+            .asyncAndThen((id) => repository.listByCustomer(id))
+    );
 }

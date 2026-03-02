@@ -114,10 +114,10 @@ export function parseResource<T>(
 /**
  * Parse a Zod request schema to `Result`, conforming to our error taxonomy.
  */
-export function parseRequest<T>(
-    schema: z.ZodType<T>,
+export function parseRequest<S extends z.ZodTypeAny>(
+    schema: S,
     data: unknown
-): Result<T, RequestInvalid> {
+): Result<z.output<S>, RequestInvalid> {
     const result = schema.safeParse(data);
 
     if (result.success) {
