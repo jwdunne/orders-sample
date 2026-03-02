@@ -3,7 +3,7 @@ import { type Result, ok, err } from 'neverthrow';
 import { z } from 'zod/v4';
 
 /**
- * Represents a failure to parse input to a valid form.
+ * Represents a failure to parse a resource to a valid form.
  */
 export type ResourceInvalid = {
     type: 'resource_invalid';
@@ -11,6 +11,16 @@ export type ResourceInvalid = {
     form?: string[];
     fields?: Record<string, string[] | undefined>;
 };
+
+/**
+ * Represents a failure to parse a request to a valid form.
+ */
+export type RequestInvalid = {
+    type: 'request_invalid',
+    message: string;
+    form?: string[];
+    fields?: Record<string, string[] | undefined>;
+}
 
 /**
  * Represents a failure to decode data to a form that can be parsed.
@@ -69,6 +79,7 @@ export type Throttled = {
 
 export type AppError =
     | ResourceInvalid
+    | RequestInvalid
     | MalformedContent
     | UnsupportedContent
     | ResourceNotFound
@@ -77,9 +88,9 @@ export type AppError =
     | Throttled;
 
 /**
- * Parse a Zod schema to `Result`, conforming to our error taxonomy.
+ * Parse a Zod resource schema to `Result`, conforming to our error taxonomy.
  */
-export function parse<T>(
+export function parseResource<T>(
     schema: z.ZodType<T>,
     data: unknown
 ): Result<T, ResourceInvalid> {
@@ -100,10 +111,34 @@ export function parse<T>(
     })
 }
 
+/**
+ * Parse a Zod request schema to `Result`, conforming to our error taxonomy.
+ */
+export function parseRequest<T>(
+    schema: z.ZodType<T>,
+    data: unknown
+): Result<T, RequestInvalid> {
+    const result = schema.safeParse(data);
+
+    if (result.success) {
+        return ok(result.data);
+    }
+
+    const { fieldErrors: fields, formErrors: form } = z.flattenError(result.error);
+
+    return err({
+        type: 'request_invalid',
+        message: 'Request is invalid',
+        form,
+        fields
+    })
+}
+
 export type DBError =
     | ResourceExists
     | ResourceNotFound
     | InternalFailure
+    | ResourceInvalid
     | Throttled;
 
 export function createDynamoErrorHandler(
@@ -134,4 +169,12 @@ export function createDynamoErrorHandler(
             cause: error
         }
     }
+}
+
+export function nullishToNotFound<T>(item: T | null | undefined, resource: string, id: string): Result<T, ResourceNotFound> {
+    return !item ? err({
+        type: 'not_found',
+        resource,
+        id
+    } as const) : ok(item);
 }

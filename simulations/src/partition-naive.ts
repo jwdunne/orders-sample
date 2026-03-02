@@ -62,8 +62,9 @@ async function main() {
     let totalUnits = 0;
     console.time('listByCustomer');
     for (let i = 0; i < 100; i++) {
-        const { consumedCapacity } = await orders.listByCustomer(customerIds[0]);
-        totalUnits += consumedCapacity.total;
+        // TODO: Re-introduce consumed capacity logging
+        // const { consumedCapacity } = await orders.listByCustomer(customerIds[0]);
+        // totalUnits += consumedCapacity.total;
     }
     console.log(`Total RCUs: ${totalUnits}; Avg RCUs: ${totalUnits / 100}`);
     console.timeEnd('listByCustomer');
@@ -72,8 +73,9 @@ async function main() {
     console.time('get');
     for (let i = 0; i < 100; i++) {
         const { orderId, customerId } = ordersLists[0][i];
-        const { consumedCapacity } = await orders.get(customerId, orderId);
-        totalUnits += consumedCapacity.total;
+        // TODO: Re-introduce consumed capacity logging
+        // const { consumedCapacity } = await orders.get(customerId, orderId);
+        //totalUnits += consumedCapacity.total;
     }
     console.log(`Total RCUs: ${totalUnits}; Avg RCUs: ${totalUnits / 100}`);
     console.timeEnd('get');

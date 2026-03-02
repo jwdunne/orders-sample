@@ -1,6 +1,6 @@
 import { Order, mockAPIGatewayEvent, useDynamoDBTable } from "@orders-sample/shared";
 import { assert, describe, expect, test } from "vitest";
-import { handleCreateOrder } from "./handler";
+import { handleCreateOrder, handleGetOrder } from "./handler";
 import { createOrderRepository } from "./repository";
 import { v7 as uuidv7 } from "uuid";
 
@@ -64,7 +64,6 @@ describe('POST /orders', () => {
     });
 
     test('responds with 406 when content type is not application/json', async () => {
-        const repo = createOrderRepository(client, tableName);
         const response = await handleCreateOrder(repo, mockAPIGatewayEvent({
             status: 'cabbage',
             items: [{
@@ -84,24 +83,83 @@ describe('POST /orders', () => {
 });
 
 describe('GET /customers/{customer_id}/orders/{order_id}', () => {
-    test('responds with previously created order', () => {
-        // ...
+    const setup = async (customerId: string) => {
+        const createOrderResponse = await handleCreateOrder(repo, mockAPIGatewayEvent({
+            customerId,
+            status: 'PENDING',
+            items: [{
+                product: 'Coffee',
+                quantity: 2,
+                price: 19.99
+            }],
+            total: 39.98,
+        }));
+
+        return Order.parse(JSON.parse(createOrderResponse.body ?? ''));
+    };
+
+    test('responds with previously created order', async () => {
+        const customerId = uuidv7();
+        const createdOrder = await setup(customerId);
+
+        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId,
+                orderId: createdOrder.orderId
+            }
+        }));
+
+        expect(response.statusCode).toBe(200);
     });
 
-    test('responds with 404 when customer not found', () => {
-        // ...
+    test('responds with 404 when customer not found', async () => {
+        const customerId = uuidv7();
+        const createdOrder = await setup(uuidv7());
+
+        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId,
+                orderId: createdOrder.orderId
+            }
+        }));
+
+        expect(response.statusCode).toBe(404);
     });
 
-    test('responds with 404 when order not found', () => {
-        // ...
+    test('responds with 404 when order not found', async () => {
+        const customerId = uuidv7();
+        await setup(customerId);
+
+        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId,
+                orderId: uuidv7()
+            }
+        }));
+
+        expect(response.statusCode).toBe(404);
     });
 
-    test('responds with 400 if customer_id is not valid UUID', () => {
-        // ...
+    test('responds with 400 if customer_id is not valid UUID', async () => {
+        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId: 'davis',
+                orderId: uuidv7()
+            }
+        }));
+
+        expect(response.statusCode).toBe(400);
     });
 
-    test('responds with 400 if order_id is not valid UUID', () => {
-        // ...
+    test('responds with 400 if order_id is not valid UUID', async () => {
+        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId: uuidv7(),
+                orderId: 'davis'
+            }
+        }));
+
+        expect(response.statusCode).toBe(400);
     })
 });
 

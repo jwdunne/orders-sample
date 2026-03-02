@@ -107,13 +107,13 @@ const orderCreateRoute = new aws.apigatewayv2.Route('OrderCreateRoute', {
 
 const orderGetRoute = new aws.apigatewayv2.Route('OrderGetRoute', {
     apiId: api.id,
-    routeKey: 'GET /customers/{customer_id}/orders/{order_id}',
+    routeKey: 'GET /customers/{customerId}/orders/{orderId}',
     target: pulumi.interpolate`integrations/${orderIntegration.id}`
 });
 
 const ordersListForCustomerRoute = new aws.apigatewayv2.Route('OrderListForCustomerRoute', {
     apiId: api.id,
-    routeKey: 'GET /customers/{customer_id}',
+    routeKey: 'GET /customers/{{customerId}}',
     target: pulumi.interpolate`integrations/${orderIntegration.id}`
 });
 
@@ -126,7 +126,7 @@ const paymentIntegration = new aws.apigatewayv2.Integration('PaymentIntegration'
 
 const paymentRoute = new aws.apigatewayv2.Route('PaymentRoute', {
     apiId: api.id,
-    routeKey: 'POST /payments/{order_id}',
+    routeKey: 'POST /payments/{customerId}',
     target: pulumi.interpolate`integrations/${paymentIntegration.id}`
 });
 

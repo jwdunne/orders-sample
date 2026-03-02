@@ -1,14 +1,22 @@
 import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
 import { Order, StoreEnvelope } from "@orders-sample/shared";
-import { DBError, createDynamoErrorHandler } from "@orders-sample/shared/src/errors";
-import { ResultAsync } from 'neverthrow';
+import { DBError, createDynamoErrorHandler, nullishToNotFound, parseResource } from "@orders-sample/shared/src/errors";
+import { ResultAsync, err, ok } from 'neverthrow';
+import z from "zod";
+
+export const GetOrderParams = z.object({
+    orderId: z.uuidv7(),
+    customerId: z.uuidv7()
+});
+
+export type GetOrderParams = z.infer<typeof GetOrderParams>;
 
 export type OrderRepository = {
     create: (order: Order) => ResultAsync<Order, DBError>;
 
     batchCreate: (orders: Order[]) => Promise<void>;
 
-    get: (customerId: string, orderId: string) => Promise<StoreEnvelope<Order>>;
+    get: (params: GetOrderParams) => ResultAsync<Order, DBError>;
 
     listByCustomer: (customerId: string) => Promise<StoreEnvelope<Order[]>>;
 };
@@ -51,35 +59,23 @@ export function createOrderRepository(
             }));
         },
 
-        get: async (customerId: string, orderId: string): Promise<StoreEnvelope<Order>> => {
-            const result = await client.send(new GetCommand({
-                TableName: tableName,
-                Key: {
-                    PK: `CUST#${customerId}`,
-                    SK: `ORDR#${orderId}`
-                },
-                ReturnConsumedCapacity: 'TOTAL'
-            }));
+        get: ({ customerId, orderId }): ResultAsync<Order, DBError> => {
+            const id = `${customerId}:${orderId}`;
 
-            if (!result.Item) {
-                throw Error(`Could not find order by ID #${orderId}`);
-            }
+            const result = ResultAsync.fromPromise(
+                client.send(new GetCommand({
+                    TableName: tableName,
+                    Key: {
+                        PK: `CUST#${customerId}`,
+                        SK: `ORDR#${orderId}`
+                    }
+                })),
+                createDynamoErrorHandler('order', id)
+            );
 
-            return {
-                data: {
-                    orderId: result.Item.orderId,
-                    customerId: result.Item.customerId,
-                    status: result.Item.status,
-                    items: result.Item.items,
-                    total: result.Item.total,
-                    createdAt: result.Item.createdAt
-                },
-                consumedCapacity: {
-                    total: result.ConsumedCapacity?.CapacityUnits ?? 0,
-                    rcu: result.ConsumedCapacity?.ReadCapacityUnits ?? 0,
-                    wcu: result.ConsumedCapacity?.WriteCapacityUnits ?? 0
-                }
-            };
+            return result
+                .andThen(({ Item }) => nullishToNotFound(Item, 'order', id))
+                .andThen((item) => parseResource(Order, item));
         },
 
         listByCustomer: async (customerId: string): Promise<StoreEnvelope<Order[]>> => {

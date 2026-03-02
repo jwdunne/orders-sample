@@ -2,9 +2,9 @@ import { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from "aws-l
 import { v7 as uuidv7 } from 'uuid';
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
-import { OrderRepository, createOrderRepository } from "./repository";
+import { GetOrderParams, OrderRepository, createOrderRepository } from "./repository";
 import { CreateOrder, Order, getJsonBody, parseJsonObjectBody, toHttpResponse } from "@orders-sample/shared";
-import { parse } from '@orders-sample/shared/src/errors';
+import { parseRequest, parseResource } from '@orders-sample/shared/src/errors';
 
 export const handler = async (event: APIGatewayProxyEventV2): Promise<unknown> => {
     if (!process.env.TABLE_NAME) {
@@ -39,8 +39,8 @@ export const handler = async (event: APIGatewayProxyEventV2): Promise<unknown> =
 export async function handleCreateOrder(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> {
     const result = await getJsonBody(event)
         .andThen(parseJsonObjectBody)
-        .andThen((json) => parse(CreateOrder, json))
-        .andThen((dto) => parse(Order, {
+        .andThen((json) => parseResource(CreateOrder, json))
+        .andThen((dto) => parseResource(Order, {
             orderId: uuidv7(),
             ...dto,
             createdAt: new Date().toISOString()
@@ -50,16 +50,11 @@ export async function handleCreateOrder(repository: OrderRepository, event: APIG
     return toHttpResponse(result, 201);
 }
 
-export async function handleGetOrder(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<unknown> {
-    const result = await repository.get(
-        event.pathParameters?.customer_id ?? '',
-        event.pathParameters?.order_id ?? ''
+export async function handleGetOrder(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> {
+    return toHttpResponse(
+        await parseRequest(GetOrderParams, event.pathParameters)
+            .asyncAndThen(repository.get)
     );
-
-    return {
-        statusCode: 200,
-        body: JSON.stringify(result.data)
-    };
 }
 
 export async function handleCustomerOrders(repository: OrderRepository, event: APIGatewayProxyEventV2): Promise<unknown> {

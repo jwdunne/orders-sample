@@ -59,6 +59,16 @@ export function toHttpResponse(
                 }
             });
 
+        case 'request_invalid':
+            return response(400, {
+                type: error.type,
+                error: error.message,
+                context: {
+                    form: error.form,
+                    fields: error.fields,
+                }
+            });
+
         case 'resource_exists':
             return response(409, {
                 type: error.type,
