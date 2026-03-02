@@ -113,7 +113,7 @@ const orderGetRoute = new aws.apigatewayv2.Route('OrderGetRoute', {
 
 const ordersListForCustomerRoute = new aws.apigatewayv2.Route('OrderListForCustomerRoute', {
     apiId: api.id,
-    routeKey: 'GET /customers/{{customerId}}',
+    routeKey: 'GET /customers/{customerId}/orders',
     target: pulumi.interpolate`integrations/${orderIntegration.id}`
 });
 

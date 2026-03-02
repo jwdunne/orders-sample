@@ -1,6 +1,6 @@
 import { AppError, MalformedContent, UnsupportedContent } from './errors';
 import { Result, err, ok } from 'neverthrow';
-import { APIGatewayProxyResultV2, APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
 
 export function getJsonBody(
     event: APIGatewayProxyEventV2
@@ -72,7 +72,7 @@ export function toHttpResponse(
         case 'resource_exists':
             return response(409, {
                 type: error.type,
-                error: `${error.resource} with ID ${error.type} already exists`,
+                error: `${error.resource} with ID ${error.id} already exists`,
                 context: {
                     resource: error.resource,
                     id: error.id
@@ -101,7 +101,7 @@ export function toHttpResponse(
         case 'not_found':
             return response(404, {
                 type: error.type,
-                error: `${error.resource} with ID ${error.type} not found`,
+                error: `${error.resource} with ID ${error.id} not found`,
                 context: {
                     resource: error.resource,
                     id: error.id

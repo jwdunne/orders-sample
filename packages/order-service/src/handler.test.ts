@@ -1,6 +1,6 @@
 import { Order, mockAPIGatewayEvent, useDynamoDBTable } from "@orders-sample/shared";
 import { assert, describe, expect, test } from "vitest";
-import { handleCreateOrder, handleGetOrder } from "./handler";
+import { handleCreateOrder, handleGetOrder } from "./controllers";
 import { createOrderRepository } from "./repository";
 import { v7 as uuidv7 } from "uuid";
 
