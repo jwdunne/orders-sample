@@ -1,6 +1,6 @@
-import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { BatchWriteCommand, DynamoDBDocumentClient, GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { CustomerId, Order, OrderId } from "./model";
-import { DBError, createDynamoErrorHandler, nullishToNotFound, parseResource } from "@orders-sample/shared/src/errors";
+import { DBError, createDynamoErrorHandler, nullishToNotFound, parseResource } from '@orders-sample/shared';
 import { ResultAsync } from 'neverthrow';
 import z from "zod";
 
