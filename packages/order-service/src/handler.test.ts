@@ -191,15 +191,23 @@ describe('GET /customers/{customer_id}/orders', () => {
         expect(sortedDescending).toBe(true);
     });
 
+    test('responds with empty list if no orders found', async () => {
+        const response = await handleCustomerOrders(repo, mockAPIGatewayEvent(undefined, {
+            pathParameters: {
+                customerId: uuidv7()
+            }
+        }));
+
+        expect(response.statusCode).toBe(200);
+        assert(response.body !== undefined);
+        expect(JSON.parse(response.body)).toEqual([]);
+    });
+
     test('responds with at most 10 orders per page', () => {
         // ...
     });
 
     test('supports next query param for next page', () => {
-        // ...
-    });
-
-    test('responds with 404 if customer not found', () => {
         // ...
     });
 
