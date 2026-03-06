@@ -1,5 +1,7 @@
+import { http, HttpResponse } from 'msw';
+import { setupServer } from 'msw/node';
 import { mockAPIGatewayEvent, useDynamoDBTable } from "@orders-sample/shared";
-import { assert, describe, expect, test } from "vitest";
+import { afterAll, afterEach, assert, beforeAll, describe, expect, test } from "vitest";
 import { handleCreateOrder, handleCustomerOrders, handleGetOrder } from "./controllers";
 import { createOrderRepository } from "./repository";
 import { Order } from "./model";
@@ -10,24 +12,9 @@ const { client, tableName } = useDynamoDBTable();
 const repo = createOrderRepository(client, tableName);
 
 const setup = async (customerId: string) => {
-    const createOrderResponse = await handleCreateOrder(repo, mockAPIGatewayEvent({
-        customerId,
-        status: 'PENDING',
-        items: [{
-            product: 'Coffee',
-            quantity: 2,
-            price: 19.99
-        }],
-        total: 39.98,
-    }));
-
-    return Order.parse(JSON.parse(createOrderResponse.body ?? ''));
-};
-
-describe('POST /orders', () => {
-    test('creates order and returns 201', async () => {
-        const customerId = uuidv7();
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent({
+    const createOrderResponse = await handleCreateOrder({
+        repository: repo,
+        event: mockAPIGatewayEvent({
             customerId,
             status: 'PENDING',
             items: [{
@@ -36,7 +23,30 @@ describe('POST /orders', () => {
                 price: 19.99
             }],
             total: 39.98,
-        }));
+        }),
+        paymentServiceBaseUrl: 'http://payment.service'
+    });
+
+    return Order.parse(JSON.parse(createOrderResponse.body ?? ''));
+};
+
+describe('POST /orders', () => {
+    test('creates order and returns 201', async () => {
+        const customerId = uuidv7();
+        const response = await handleCreateOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent({
+                customerId,
+                status: 'PENDING',
+                items: [{
+                    product: 'Coffee',
+                    quantity: 2,
+                    price: 19.99
+                }],
+                total: 39.98,
+            }),
+            paymentServiceBaseUrl: 'http://payment.service'
+        });
 
         expect(response.statusCode).toBe(201);
 
@@ -54,46 +64,59 @@ describe('POST /orders', () => {
     });
 
     test('responds with 400 when body missing', async () => {
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent());
+        const response = await handleCreateOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent()
+        });
+
         expect(response.statusCode).toBe(400);
     });
 
     test('responds with 400 when body is malformed JSON', async () => {
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent(undefined, {
-            body: 'malformed json string'
-        }));
+        const response = await handleCreateOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                body: 'malformed json string'
+            })
+        });
+
         expect(response.statusCode).toBe(400);
     });
 
     test('responds with 422 when fields are missing or invalid', async () => {
-        const repo = createOrderRepository(client, tableName);
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent({
-            status: 'cabbage',
-            items: [{
-                product: 'Coffee',
-                quantity: -2,
-                price: 19.99
-            }],
-            total: 39.98,
-        }))
+        const response = await handleCreateOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent({
+                status: 'cabbage',
+                items: [{
+                    product: 'Coffee',
+                    quantity: -2,
+                    price: 19.99
+                }],
+                total: 39.98,
+            })
+        });
 
         expect(response.statusCode).toBe(422);
     });
 
     test('responds with 406 when content type is not application/json', async () => {
-        const response = await handleCreateOrder(repo, mockAPIGatewayEvent({
-            status: 'cabbage',
-            items: [{
-                product: 'Coffee',
-                quantity: -2,
-                price: 19.99
-            }],
-            total: 39.98,
-        }, {
-            headers: {
-                'content-type': 'application/xml'
-            }
-        }))
+        const response = await handleCreateOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent({
+                status: 'cabbage',
+                items: [{
+                    product: 'Coffee',
+                    quantity: -2,
+                    price: 19.99
+                }],
+                total: 39.98,
+            }, {
+                headers: {
+                    'content-type': 'application/xml'
+                }
+            })
+        })
 
         expect(response.statusCode).toBe(415);
     });
@@ -105,12 +128,15 @@ describe('GET /customers/{customer_id}/orders/{order_id}', () => {
         const customerId = uuidv7();
         const createdOrder = await setup(customerId);
 
-        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId,
-                orderId: createdOrder.orderId
-            }
-        }));
+        const response = await handleGetOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId,
+                    orderId: createdOrder.orderId
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(200);
     });
@@ -119,12 +145,15 @@ describe('GET /customers/{customer_id}/orders/{order_id}', () => {
         const customerId = uuidv7();
         const createdOrder = await setup(uuidv7());
 
-        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId,
-                orderId: createdOrder.orderId
-            }
-        }));
+        const response = await handleGetOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId,
+                    orderId: createdOrder.orderId
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(404);
     });
@@ -133,34 +162,43 @@ describe('GET /customers/{customer_id}/orders/{order_id}', () => {
         const customerId = uuidv7();
         await setup(customerId);
 
-        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId,
-                orderId: uuidv7()
-            }
-        }));
+        const response = await handleGetOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId,
+                    orderId: uuidv7()
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(404);
     });
 
     test('responds with 400 if customer_id is not valid UUID', async () => {
-        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId: 'davis',
-                orderId: uuidv7()
-            }
-        }));
+        const response = await handleGetOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId: 'davis',
+                    orderId: uuidv7()
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(400);
     });
 
     test('responds with 400 if order_id is not valid UUID', async () => {
-        const response = await handleGetOrder(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId: uuidv7(),
-                orderId: 'davis'
-            }
-        }));
+        const response = await handleGetOrder({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId: uuidv7(),
+                    orderId: 'davis'
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(400);
     })
@@ -174,11 +212,14 @@ describe('GET /customers/{customer_id}/orders', () => {
             await setup(customerId);
         }
 
-        const response = await handleCustomerOrders(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId
-            }
-        }));
+        const response = await handleCustomerOrders({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId
+                }
+            })
+        });
 
         const orders = z.array(Order).parse(JSON.parse(response.body ?? ''));
 
@@ -192,11 +233,14 @@ describe('GET /customers/{customer_id}/orders', () => {
     });
 
     test('responds with empty list if no orders found', async () => {
-        const response = await handleCustomerOrders(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId: uuidv7()
-            }
-        }));
+        const response = await handleCustomerOrders({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId: uuidv7()
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(200);
         assert(response.body !== undefined);
@@ -212,12 +256,33 @@ describe('GET /customers/{customer_id}/orders', () => {
     });
 
     test('responds with 400 if customer_id not valid UUID', async () => {
-        const response = await handleCustomerOrders(repo, mockAPIGatewayEvent(undefined, {
-            pathParameters: {
-                customerId: 'barney'
-            }
-        }));
+        const response = await handleCustomerOrders({
+            repository: repo,
+            event: mockAPIGatewayEvent(undefined, {
+                pathParameters: {
+                    customerId: 'barney'
+                }
+            })
+        });
 
         expect(response.statusCode).toBe(400);
     });
 });
+
+const paymentServer = setupServer(
+    http.post('*/payments/:orderId', () => {
+        return HttpResponse.json({ status: 'validated' });
+    })
+)
+
+beforeAll(() => paymentServer.listen({
+    onUnhandledRequest: (req, print) => {
+        if (req.url.startsWith('http://localhost:8000')) {
+            return;
+        }
+
+        print.warning();
+    }
+}));
+afterEach(() => paymentServer.resetHandlers());
+afterAll(() => paymentServer.close());

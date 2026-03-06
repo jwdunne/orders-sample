@@ -4,12 +4,12 @@ import { createOrderRepository } from '@orders-sample/order-service/src/reposito
 import { v7 as uuidv7 } from 'uuid';
 import { Order } from '@orders-sample/order-service/src/model';
 
-if (!process.env.TABLE_NAME) {
-    console.error('Cannot run simulation without providing TABLE_NAME environment variable');
+if (!process.env.ORDER_TABLE_NAME) {
+    console.error('Cannot run simulation without providing ORDER_TABLE_NAME environment variable');
     process.exit(1);
 }
 
-const tableName = process.env.TABLE_NAME;
+const tableName = process.env.ORDER_TABLE_NAME;
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 const orders = createOrderRepository(client, tableName);

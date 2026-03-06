@@ -19,6 +19,7 @@
     "@types/aws-lambda": "^8.10.160",
     "@types/node": "^25.3.0",
     "esbuild": "^0.27.3",
+    "msw": "^2.12.10",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

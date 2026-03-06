@@ -4,25 +4,27 @@ import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { createOrderRepository } from "./repository";
 import { handleCreateOrder, handleCustomerOrders, handleGetOrder } from "./controllers";
 
-if (!process.env.TABLE_NAME) {
-    console.error('Cannot without valid TABLE_NAME environment variable');
+const tableName = process.env.ORDER_TABLE_NAME ?? '';
+const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+const repository = createOrderRepository(client, tableName);
+
+const paymentServiceBaseUrl = process.env.PAYMENT_SERVICE_BASE_URL;
+
+if (!paymentServiceBaseUrl) {
+    console.error('Missing PAYMENT_SERVICE_BASE_URL environment variable');
     process.exit(1);
 }
-
-const tableName = process.env.TABLE_NAME;
-const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
-const orders = createOrderRepository(client, tableName);
 
 export const handler = async (event: APIGatewayProxyEventV2): Promise<APIGatewayProxyStructuredResultV2> => {
     switch (event.routeKey) {
         case 'GET /customers/{customerId}/orders/{orderId}':
-            return handleGetOrder(orders, event);
+            return handleGetOrder({ repository, event, paymentServiceBaseUrl });
 
         case 'POST /orders':
-            return handleCreateOrder(orders, event);
+            return handleCreateOrder({ repository, event });
 
         case 'GET /customers/{customerId}/orders':
-            return handleCustomerOrders(orders, event);
+            return handleCustomerOrders({ repository, event });
 
         default:
             return {

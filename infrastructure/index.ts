@@ -15,21 +15,48 @@ const ordersTable = new aws.dynamodb.Table("Orders", {
     ]
 });
 
-const lambdaRolePolicy = aws.iam.getPolicyDocument({
+const configTable = new aws.dynamodb.Table("Config", {
+    name: `config-${stackName}`,
+    billingMode: 'PAY_PER_REQUEST',
+    hashKey: 'PK',
+    attributes: [
+        { name: 'PK', type: 'S' }
+    ]
+});
+
+const orderServiceLambdaRolePolicy = aws.iam.getPolicyDocument({
     statements: [
         {
             actions: ['sts:AssumeRole'],
             principals: [{ type: 'Service', identifiers: ['lambda.amazonaws.com'] }]
         }
     ]
-})
+});
 
-const lambdaRole = new aws.iam.Role('OrderServiceRole', {
-    assumeRolePolicy: lambdaRolePolicy.then(policy => policy.json)
+const paymentServiceLambdaRolePolicy = aws.iam.getPolicyDocument({
+    statements: [
+        {
+            actions: ['sts:AssumeRole'],
+            principals: [{ type: 'Service', identifiers: ['lambda.amazonaws.com'] }]
+        }
+    ]
+});
+
+const orderServiceLambdaRole = new aws.iam.Role('OrderServiceRole', {
+    assumeRolePolicy: orderServiceLambdaRolePolicy.then(policy => policy.json)
+});
+
+const paymentServiceLambdaRole = new aws.iam.Role('PaymentServiceRole', {
+    assumeRolePolicy: paymentServiceLambdaRolePolicy.then(policy => policy.json)
 });
 
 new aws.iam.RolePolicyAttachment('OrderServiceLogsPolicy', {
-    role: lambdaRole.name,
+    role: orderServiceLambdaRole.name,
+    policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole
+});
+
+new aws.iam.RolePolicyAttachment('PaymentServiceLogsPolicy', {
+    role: paymentServiceLambdaRole.name,
     policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole
 });
 
@@ -46,26 +73,56 @@ const orderServiceRolePolicy = aws.iam.getPolicyDocumentOutput({
         ],
         resources: [
             pulumi.interpolate`${ordersTable.arn}`,
-            pulumi.interpolate`${ordersTable.arn}/index/*`
+            pulumi.interpolate`${ordersTable.arn}/index/*`,
+            pulumi.interpolate`${configTable.arn}`,
+            pulumi.interpolate`${configTable.arn}/index/*`,
         ]
     }],
 })
 
+const paymentServiceRolePolicy = aws.iam.getPolicyDocumentOutput({
+    statements: [{
+        actions: [
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:Query",
+            "dynamodb:Scan",
+            "dynamodb:BatchWriteItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem"
+        ],
+        resources: [
+            pulumi.interpolate`${configTable.arn}`,
+            pulumi.interpolate`${configTable.arn}/index/*`,
+        ]
+    }],
+});
+
 new aws.iam.RolePolicy('OrderServiceDynamoPolicy', {
-    role: lambdaRole.id,
+    role: orderServiceLambdaRole.id,
     policy: orderServiceRolePolicy.json
+});
+
+new aws.iam.RolePolicy('PaymentServiceDynamoPolicy', {
+    role: paymentServiceLambdaRole.id,
+    policy: paymentServiceRolePolicy.json
+});
+
+const api = new aws.apigatewayv2.Api('OrdersApi', {
+    protocolType: 'HTTP'
 });
 
 const orderHandler = new aws.lambda.Function("OrderHandler", {
     runtime: aws.lambda.Runtime.NodeJS20dX,
     handler: 'handler.handler',
-    role: lambdaRole.arn,
+    role: orderServiceLambdaRole.arn,
     code: new pulumi.asset.FileArchive(
         path.join(__dirname, '../packages/order-service/dist/lambda')
     ),
     environment: {
         variables: {
-            TABLE_NAME: ordersTable.name
+            ORDER_TABLE_NAME: ordersTable.name,
+            PAYMENT_SERVICE_BASE_URL: pulumi.interpolate`${api.apiEndpoint}`
         }
     },
     timeout: 10,
@@ -75,21 +132,19 @@ const orderHandler = new aws.lambda.Function("OrderHandler", {
 const paymentHandler = new aws.lambda.Function("PaymentHandler", {
     runtime: aws.lambda.Runtime.NodeJS20dX,
     handler: 'handler.handler',
-    role: lambdaRole.arn,
+    role: paymentServiceLambdaRole.arn,
     code: new pulumi.asset.FileArchive(
         path.join(__dirname, '../packages/payment-service/dist/lambda')
     ),
     environment: {
         variables: {
-            TABLE_NAME: ordersTable.name
+            ORDER_TABLE_NAME: ordersTable.name,
+            CONFIG_TABLE_NAME: configTable.name
+
         }
     },
     timeout: 10,
     memorySize: 256
-});
-
-const api = new aws.apigatewayv2.Api('OrdersApi', {
-    protocolType: 'HTTP'
 });
 
 const orderIntegration = new aws.apigatewayv2.Integration('OrdersIntegration', {
@@ -99,19 +154,19 @@ const orderIntegration = new aws.apigatewayv2.Integration('OrdersIntegration', {
     payloadFormatVersion: '2.0'
 });
 
-const orderCreateRoute = new aws.apigatewayv2.Route('OrderCreateRoute', {
+new aws.apigatewayv2.Route('OrderCreateRoute', {
     apiId: api.id,
     routeKey: 'POST /orders',
     target: pulumi.interpolate`integrations/${orderIntegration.id}`
 });
 
-const orderGetRoute = new aws.apigatewayv2.Route('OrderGetRoute', {
+new aws.apigatewayv2.Route('OrderGetRoute', {
     apiId: api.id,
     routeKey: 'GET /customers/{customerId}/orders/{orderId}',
     target: pulumi.interpolate`integrations/${orderIntegration.id}`
 });
 
-const ordersListForCustomerRoute = new aws.apigatewayv2.Route('OrderListForCustomerRoute', {
+new aws.apigatewayv2.Route('OrderListForCustomerRoute', {
     apiId: api.id,
     routeKey: 'GET /customers/{customerId}/orders',
     target: pulumi.interpolate`integrations/${orderIntegration.id}`
@@ -124,13 +179,13 @@ const paymentIntegration = new aws.apigatewayv2.Integration('PaymentIntegration'
     payloadFormatVersion: '2.0'
 });
 
-const paymentRoute = new aws.apigatewayv2.Route('PaymentRoute', {
+new aws.apigatewayv2.Route('PaymentRoute', {
     apiId: api.id,
     routeKey: 'POST /payments/{customerId}',
     target: pulumi.interpolate`integrations/${paymentIntegration.id}`
 });
 
-const stage = new aws.apigatewayv2.Stage("OrdersStage", {
+new aws.apigatewayv2.Stage("OrdersStage", {
     apiId: api.id,
     name: '$default',
     autoDeploy: true

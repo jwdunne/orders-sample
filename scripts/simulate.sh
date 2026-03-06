@@ -2,5 +2,5 @@
 
 set -eu
 
-TABLE_NAME=$(pulumi stack output tableName --cwd infrastructure) \
+ORDER_TABLE_NAME=$(pulumi stack output tableName --cwd infrastructure) \
     pnpm --filter simulations run $1

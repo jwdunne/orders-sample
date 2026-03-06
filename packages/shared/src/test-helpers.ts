@@ -17,31 +17,51 @@ const client = DynamoDBDocumentClient.from(rawClient);
 
 export function useDynamoDBTable() {
     const tableName = `orders-test-${randomUUID().slice(0, 8)}`;
+    const configTableName = `config-test-${randomUUID().slice(0, 8)}`;
 
     beforeAll(async () => {
-        await rawClient.send(
-            new CreateTableCommand({
-                TableName: tableName,
-                BillingMode: 'PAY_PER_REQUEST',
-                KeySchema: [
-                    { AttributeName: 'PK', KeyType: 'HASH' },
-                    { AttributeName: 'SK', KeyType: 'RANGE' }
-                ],
-                AttributeDefinitions: [
-                    { AttributeName: 'PK', AttributeType: 'S' },
-                    { AttributeName: 'SK', AttributeType: 'S' }
-                ]
-            })
-        );
+        await Promise.all([
+            rawClient.send(
+                new CreateTableCommand({
+                    TableName: tableName,
+                    BillingMode: 'PAY_PER_REQUEST',
+                    KeySchema: [
+                        { AttributeName: 'PK', KeyType: 'HASH' },
+                        { AttributeName: 'SK', KeyType: 'RANGE' }
+                    ],
+                    AttributeDefinitions: [
+                        { AttributeName: 'PK', AttributeType: 'S' },
+                        { AttributeName: 'SK', AttributeType: 'S' }
+                    ]
+                })
+            ),
+            rawClient.send(
+                new CreateTableCommand({
+                    TableName: configTableName,
+                    BillingMode: 'PAY_PER_REQUEST',
+                    KeySchema: [
+                        { AttributeName: 'PK', KeyType: 'HASH' },
+                    ],
+                    AttributeDefinitions: [
+                        { AttributeName: 'PK', AttributeType: 'S' },
+                    ]
+                })
+            )
+        ])
     });
 
     afterAll(async () => {
-        await rawClient.send(
-            new DeleteTableCommand({ TableName: tableName })
-        );
+        await Promise.all([
+            rawClient.send(
+                new DeleteTableCommand({ TableName: tableName })
+            ),
+            rawClient.send(
+                new DeleteTableCommand({ TableName: configTableName })
+            )
+        ]);
     });
 
-    return { tableName, client };
+    return { tableName, configTableName, client };
 }
 
 export function mockAPIGatewayEvent<T extends Record<string, any>>(body?: T, event?: Partial<APIGatewayProxyEventV2>): APIGatewayProxyEventV2 {

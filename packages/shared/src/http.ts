@@ -114,7 +114,7 @@ export function toHttpResponse(
             }
             return response(500, {
                 type: error.type,
-                message: error.message
+                error: error.message
             });
 
         case 'throttled':

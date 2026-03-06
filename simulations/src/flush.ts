@@ -1,12 +1,12 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { BatchWriteCommand, DynamoDBDocumentClient, ScanCommand } from "@aws-sdk/lib-dynamodb";
 
-if (!process.env.TABLE_NAME) {
-    console.error('Cannot run simulation without providing TABLE_NAME environment variable');
+if (!process.env.ORDER_TABLE_NAME) {
+    console.error('Cannot run simulation without providing ORDER_TABLE_NAME environment variable');
     process.exit(1);
 }
 
-const tableName = process.env.TABLE_NAME;
+const tableName = process.env.ORDER_TABLE_NAME;
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
